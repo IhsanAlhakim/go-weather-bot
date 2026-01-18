@@ -29,8 +29,15 @@ type CityWeather struct {
 	Cod int `json:"cod"`
 }
 
+var serverErrorMessage = "Something went wrong"
+
 var Handlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
 	"weather": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+
+		if err := deferInteractionResponse(s, i); err != nil {
+			return
+		}
+
 		options := i.ApplicationCommandData().Options
 
 		optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(options))
@@ -53,30 +60,30 @@ var Handlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCre
 
 		request, err := http.NewRequest("GET", url, nil)
 		if err != nil {
-			singleTextResponse(s, i, "Something went wrong")
+			singleTextResponse(s, i, &serverErrorMessage)
 			return
 		}
 
 		response, err := client.Do(request)
 		if err != nil {
-			singleTextResponse(s, i, "Something went wrong")
+			singleTextResponse(s, i, &serverErrorMessage)
 			return
 		}
 		defer response.Body.Close()
 
 		if response.StatusCode == http.StatusNotFound {
-			singleTextResponse(s, i, "City not found")
+			singleTextResponse(s, i, &serverErrorMessage)
 			return
 		}
 
 		err = json.NewDecoder(response.Body).Decode(&data)
 
 		if err != nil {
-			singleTextResponse(s, i, "Something went wrong")
+			singleTextResponse(s, i, &serverErrorMessage)
 			return
 		}
 
 		responseText := fmt.Sprintf("Weather Info\nCity: %v\nWeather: %v\nDescription: %v\nTemperature: %v", data.Name, data.Weather[0].Main, data.Weather[0].Description, data.Main.Temp)
-		singleTextResponse(s, i, responseText)
+		singleTextResponse(s, i, &responseText)
 	},
 }
