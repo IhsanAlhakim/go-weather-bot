@@ -13,12 +13,15 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		return
+		log.Fatalf("Cannot load .env: %v", err)
 	}
 
 	botToken := os.Getenv("BOT_TOKEN")
 
 	discord, err := discordgo.New("Bot " + botToken)
+	if err != nil {
+		log.Fatalf("Invalid bot parameters: %v", err)
+	}
 
 	discord.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Println("BOT READY")
@@ -30,7 +33,10 @@ func main() {
 		}
 	})
 
-	discord.Open()
+	err = discord.Open()
+	if err != nil {
+		log.Fatalf("Cannot open the session: %v", err)
+	}
 	defer discord.Close()
 
 	log.Println("Adding Commands...")
@@ -44,9 +50,11 @@ func main() {
 	}
 
 	log.Println("BOT RUNNING...")
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	<-c
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+	log.Println("Press CTRL + C to exit")
+	<-stop
 
 	log.Println("Removing commands...")
 	for _, v := range registeredCommands {
@@ -55,5 +63,5 @@ func main() {
 			log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
 		}
 	}
-
+	log.Println("Gracefully shutting down")
 }
