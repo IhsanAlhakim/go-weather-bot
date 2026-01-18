@@ -44,73 +44,39 @@ var Handlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCre
 			city = option.StringValue()
 		}
 
-		if city == "" {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Please input a city name",
-				},
-			})
-			return
-		}
-
 		var client = &http.Client{}
 		var data CityWeather
 
 		openWeatherKey := os.Getenv("OPEN_WEATHER_API_KEY")
 
-		var url = fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%v&units=metric&appid=%v", city, openWeatherKey)
+		url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%v&units=metric&appid=%v", city, openWeatherKey)
 
 		request, err := http.NewRequest("GET", url, nil)
 		if err != nil {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Error Server",
-				},
-			})
+			singleTextResponse(s, i, "Something went wrong")
 			return
 		}
 
 		response, err := client.Do(request)
 		if err != nil {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Error Server",
-				},
-			})
+			singleTextResponse(s, i, "Something went wrong")
 			return
 		}
 		defer response.Body.Close()
 
 		if response.StatusCode == http.StatusNotFound {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "City not found",
-				},
-			})
+			singleTextResponse(s, i, "City not found")
 			return
 		}
 
 		err = json.NewDecoder(response.Body).Decode(&data)
 
 		if err != nil {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Error Server",
-				},
-			})
+			singleTextResponse(s, i, "Something went wrong")
 			return
 		}
 
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: fmt.Sprintf("City: %v, Weather: %v, Description: %v, Temperature: %v", data.Name, data.Weather[0].Main, data.Weather[0].Description, data.Main.Temp),
-			},
-		})
+		responseText := fmt.Sprintf("Weather Info\nCity: %v\nWeather: %v\nDescription: %v\nTemperature: %v", data.Name, data.Weather[0].Main, data.Weather[0].Description, data.Main.Temp)
+		singleTextResponse(s, i, responseText)
 	},
 }
